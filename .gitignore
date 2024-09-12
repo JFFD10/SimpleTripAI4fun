@@ -8,6 +8,7 @@ __pycache__/
 
 # Environment variables
 .env
+.env.local
 
 # IDE-specific files
 .vscode/
@@ -33,6 +34,7 @@ Thumbs.db
 *.pyc
 *.pyo
 *.pyd
+__pycache__/
 
 # Distribution / packaging
 .Python
@@ -70,3 +72,30 @@ nosetests.xml
 coverage.xml
 *.cover
 .hypothesis/
+
+# Additional cache patterns
+**/__pycache__/
+**/*.py[cod]
+**/*$py.class
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+
+# Database files
+*.db
+*.sqlite
+
+# Backup files
+*~
+*.bak
+*.swp
+
+# Any other config files (if applicable)
+# config.yaml
+# settings.json
+
+# Node.js
+node_modules/
+
+# Next.js
+.next/
