@@ -16,36 +16,29 @@ def get_information(place, category):
             print("HUGGINGFACEHUB_API_TOKEN not set", file=sys.stderr)
             return json.dumps({"error": "HUGGINGFACEHUB_API_TOKEN not set"})
 
-        client = InferenceClient(
-            "mistralai/Mistral-Nemo-Instruct-2407",
-            token=hf_token,
-        )
-
         prompt_template = PromptTemplate(
             input_variables=["place", "category"],
-            template="Briefly provide information about {category} in {place}. List 3 top options with short descriptions."
+            template="Provide information about the top 3 {category} in {place}. For each, include the name and a brief description."
         )
 
         prompt = prompt_template.format(place=place, category=category)
-        messages = [{"role": "user", "content": prompt}]
         
         print("Sending request to Hugging Face API", file=sys.stderr)
         try:
-            # Set a timeout for the entire request
             response = requests.post(
                 f"https://api-inference.huggingface.co/models/mistralai/Mistral-Nemo-Instruct-2407",
                 headers={"Authorization": f"Bearer {hf_token}"},
                 json={"inputs": prompt},
-                timeout=90  # 90-second timeout
+                timeout=90
             )
             response.raise_for_status()
             result = response.json()[0]['generated_text']
-            print("Received response from Hugging Face API", file=sys.stderr)
+            print(f"Raw response from Hugging Face API: {result}", file=sys.stderr)
             
-            # Format the result
-            formatted_result = f"{place} - {category}\n" + "\n".join([f"• {point.strip()}" for point in result.split('.') if point.strip()])
-            
-            return json.dumps({"information": formatted_result})
+            relevant_info = extract_relevant_info(result)
+            if not relevant_info.strip():
+                return json.dumps({"error": f"No information found for {category} in {place}"})
+            return json.dumps({"information": relevant_info})
         except Timeout:
             print("Hugging Face API request timed out", file=sys.stderr)
             return json.dumps({"error": "Hugging Face API request timed out"})
@@ -56,6 +49,11 @@ def get_information(place, category):
         print(f"Error occurred: {str(e)}", file=sys.stderr)
         print(traceback.format_exc(), file=sys.stderr)
         return json.dumps({"error": str(e)})
+
+def extract_relevant_info(text):
+    lines = text.split('\n')
+    relevant_lines = [line.strip() for line in lines if line.strip() and not line.lower().startswith("provide information")]
+    return '\n'.join(relevant_lines)
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:

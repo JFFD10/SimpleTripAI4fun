@@ -1,17 +1,34 @@
 import React, { useState } from 'react';
-import { PlusIcon, MapPinIcon } from 'lucide-react';
+import { PlusIcon, MapPinIcon, StarIcon } from 'lucide-react';
+
+interface Place {
+  id: number;
+  name: string;
+}
+
+interface Information {
+  information: string;
+}
 
 const TripAdvisor: React.FC = () => {
-  const [newPlace, setNewPlace] = useState('');
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [newPlaceName, setNewPlaceName] = useState('');
   const [selectedPlace, setSelectedPlace] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [information, setInformation] = useState('');
+  const [information, setInformation] = useState<Information | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleAddPlace = () => {
-    console.log('Adding place:', newPlace);
-    setNewPlace('');
-    // Here you would typically add the new place to your list of places
+  const handleAddPlace = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPlaceName.trim()) {
+      const newPlace: Place = {
+        id: Date.now(),
+        name: newPlaceName.trim(),
+      };
+      setPlaces(prevPlaces => [...prevPlaces, newPlace]);
+      setNewPlaceName('');
+      setSelectedPlace(newPlace.name);
+    }
   };
 
   const handleGetInformation = async () => {
@@ -30,31 +47,29 @@ const TripAdvisor: React.FC = () => {
         body: JSON.stringify({ place: selectedPlace, category: selectedCategory }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch information');
-      }
-
       const data = await response.json();
-      setInformation(data.information);
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      setInformation(data);
+      console.log('Received information:', data.information);  // Add this line for debugging
     } catch (error) {
       console.error('Error:', error);
-      setInformation('Failed to fetch information. Please try again.');
+      setInformation({ information: `Error: ${error.message}` });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const formatInformation = (info: string) => {
-    const lines = info.split('\n');
-    const title = lines[0] ? `<strong>${lines[0]}</strong>` : '';
-    const bulletPoints = lines.slice(1).map(line => {
-      if (line.trim() && !line.match(/^\d+\./)) {
-        return `<li>${line.trim()}</li>`;
-      }
-      return line;
-    }).join('');
-
-    return `${title}<ul class="list-disc pl-5 mt-2">${bulletPoints}</ul>`;
+  const renderStars = (rating: string) => {
+    const numStars = parseFloat(rating);
+    return Array.from({ length: 5 }, (_, i) => (
+      <StarIcon
+        key={i}
+        className={`h-5 w-5 ${i < numStars ? 'text-yellow-400' : 'text-gray-300'}`}
+        fill={i < numStars ? 'currentColor' : 'none'}
+      />
+    ));
   };
 
   return (
@@ -74,8 +89,8 @@ const TripAdvisor: React.FC = () => {
                   id="new-place"
                   className="block w-full pr-10 sm:text-sm border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
                   placeholder="Enter a place"
-                  value={newPlace}
-                  onChange={(e) => setNewPlace(e.target.value)}
+                  value={newPlaceName}
+                  onChange={(e) => setNewPlaceName(e.target.value)}
                 />
                 <button
                   onClick={handleAddPlace}
@@ -97,9 +112,11 @@ const TripAdvisor: React.FC = () => {
                 onChange={(e) => setSelectedPlace(e.target.value)}
               >
                 <option value="">Choose a place</option>
-                <option value="Paris">Paris</option>
-                <option value="London">London</option>
-                <option value="New York">New York</option>
+                {places.map((place) => (
+                  <option key={place.id} value={place.name}>
+                    {place.name}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -134,12 +151,11 @@ const TripAdvisor: React.FC = () => {
           <div className="px-8 py-6 bg-gray-50 border-t border-gray-200">
             <div className="flex items-center mb-4">
               <MapPinIcon className="h-5 w-5 text-gray-400 mr-2" aria-hidden="true" />
-              <h2 className="text-lg font-medium text-gray-900">Information</h2>
+              <h2 className="text-lg font-medium text-gray-900">Top {selectedCategory} in {selectedPlace}</h2>
             </div>
-            <div 
-              className="mt-2 text-sm text-gray-700 space-y-2"
-              dangerouslySetInnerHTML={{ __html: formatInformation(information) }}
-            />
+            <div className="mt-2 text-sm text-gray-700 space-y-2">
+              <p>{information.information}</p>
+            </div>
           </div>
         )}
       </div>
